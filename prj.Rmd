@@ -1,0 +1,102 @@
+---
+title:  "Activity Recognition"
+author: "Pouria Shirasb"
+date:  "Winter 2016"
+output:
+    html_document:
+        fig_width: 6
+        fig_height: 4
+        keep_md: true
+---
+# Overview
+Using the dataset http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset), we would like to predict "classe" variable given all the other measurements. After preprocessing the data, we train a random forest model to make predictions with a reasonable accuracy. 
+
+# Preprocess
+Download the data from [here](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv) and load it into R:
+```{r}
+library(caret)
+library(ggplot2)
+library(randomForest)
+library(corrplot)
+
+# Load the data
+if(!file.exists("pml-training.csv")) {
+    url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+    download.file(url = url, method = "auto")
+}
+
+data = read.csv("pml-training.csv", as.is = T)
+```
+
+After a quick look at the data, we notice that there are a lot of NA values, so we get rid of the columns that have more than 5% missing values. 
+We also get rid of the columns 1:6 since they are mostly meta data and seem irrelevant for prediction. Then, split the data 60%, 40% into training and test sets:
+```{r}
+# Only include columns that have less than %5 missing values
+pMiss <- function(x) { 
+    sum((x == "" | is.na(x))) /length(x)*100
+}
+na_ratio = apply(data, 2, pMiss)
+data     = data[,na_ratio < 5]
+
+# Convert "classe" to factor
+data$classe = factor(data$classe)
+
+# Strip away the first 6 columns
+data = data[,7:60]
+
+# Split data into training and test sets
+ind = createDataPartition(data$classe, p=0.6, list=F)
+data.train.x = data[ ind,-54]
+data.train.y = data[ ind, 54]
+data.test.x = data[-ind,-54]
+data.test.y = data[-ind, 54]
+```
+
+
+# Exploratory analysis
+Let's look at the distribution of response variable to check for skewness:
+```{r fig.align = "center"}
+# Exploratory data analysis
+barplot(table(data.train.y)
+       , main = "Classe Distribution"
+       , xlab = "Classe Type"
+       , ylab = "Count"
+       )
+```
+We can see that classe "A" appears to have higher density than the rest of the categories, however, since the difference is not too big and the rest have approximately the same density, there is no reason for concern. Next, we will look at the correlation heatmap to see the relationship between predictors:
+
+```{r fig.align = "center", fig.width = 7, fig.height = 7}
+cormat = cor(data.train.x)
+corrplot( cormat
+        , method = "circle"
+        , type   = "full"
+        , order  = "FPC"
+        , title  = "Feature Correlation Heatmap"
+        , tl.col = "darkblue"
+        , mar    = c(0,0,1,0) 
+        )
+```
+Looks like with a few exceptions, the predictors are mostly only weakly correlated, which means we should use them all in our prediction model. Also, it is important to note that, since we have enough samples, i.e., the ratio of number of features over number of samples is quite low, we do not need to perform any dimensitonality reduction or other preprocessing to reduce our feature space any further in order to avoid overfitting.
+
+# Prediction Model
+Using randomForest library in R, we fit a random forest using all the predictors outlined above and perform a prediction on the test set to get the test standard error:
+```{r cache=T}
+# build a random forest
+model = randomForest( x = data.train.x
+                    , y = data.train.y
+                    , xtest = data.test.x
+                    , ytest = data.test.y
+                    , keep.forest = T
+                    )
+
+print(model)
+```
+And a more in-depth summary of prediction on the test set:
+
+```{r}
+pred = predict(model, newdata = data.test.x)
+cm   = confusionMatrix(data = pred, reference = data.test.y)
+print(cm)
+```
+
+Which yeilds an accuracy of `r cm$overall[1]` , with a 95% confidence interval of (`r cm$overall[3]`, `r cm$overall[4]`) on the test set.
