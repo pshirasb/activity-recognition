@@ -102,4 +102,21 @@ print(cm)
 ```
    
 
-Which yeilds an accuracy of `r cm$overall[1]` , with a 95% confidence interval of (`r cm$overall[3]`, `r cm$overall[4]`) on the test set.
+Which yeilds an accuracy of `r cm$overall[1]` , with a 95% confidence interval of (`r cm$overall[3]`, `r cm$overall[4]`) on the test set. As an added bonus, let's take a look at the importance of the predictors in the model:
+
+```{r fig.align = "center", fig.width = 7, fig.height = 7}
+x = importance(model)
+sorted = order(x, decreasing=T)
+df = data.frame( "Predictor"  = factor( row.names(x)[sorted]
+                                      , levels = row.names(x)[sorted]
+                                      )
+               , "Importance" = x[sorted,]
+               )
+g = ( ggplot(df, aes(Predictor, Importance, fill = Predictor)) 
+    + geom_bar(stat="identity") 
+    + theme(axis.text.x = element_text(angle = 90, hjust=1))
+    + theme(legend.position = "none")
+    + ggtitle("Predictor Importance")
+    )
+print(g)
+```
