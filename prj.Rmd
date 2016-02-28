@@ -22,7 +22,9 @@ library(corrplot)
 # Load the data
 if(!file.exists("pml-training.csv")) {
     url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
-    download.file(url = url, method = "auto")
+    download.file( url      = url
+                 , method   = "auto"
+                 , destfile = "pml-training.csv")
 }
 
 data = read.csv("pml-training.csv", as.is = T)
@@ -48,8 +50,8 @@ data = data[,7:60]
 ind = createDataPartition(data$classe, p=0.6, list=F)
 data.train.x = data[ ind,-54]
 data.train.y = data[ ind, 54]
-data.test.x = data[-ind,-54]
-data.test.y = data[-ind, 54]
+data.test.x  = data[-ind,-54]
+data.test.y  = data[-ind, 54]
 ```
 
 
@@ -79,11 +81,11 @@ corrplot( cormat
 Looks like with a few exceptions, the predictors are mostly only weakly correlated, which means we should use them all in our prediction model. Also, it is important to note that, since we have enough samples, i.e., the ratio of number of features over number of samples is quite low, we do not need to perform any dimensitonality reduction or other preprocessing to reduce our feature space any further in order to avoid overfitting.
 
 # Prediction Model
-Using randomForest library in R, we fit a random forest using all the predictors outlined above and perform a prediction on the test set to get the test standard error:
+Using *randomForest* library in R, we fit a random forest using all the predictors outlined above and perform a prediction on the test set to get the test standard error:
 ```{r cache=T}
 # build a random forest
-model = randomForest( x = data.train.x
-                    , y = data.train.y
+model = randomForest( x     = data.train.x
+                    , y     = data.train.y
                     , xtest = data.test.x
                     , ytest = data.test.y
                     , keep.forest = T
@@ -98,5 +100,6 @@ pred = predict(model, newdata = data.test.x)
 cm   = confusionMatrix(data = pred, reference = data.test.y)
 print(cm)
 ```
+   
 
 Which yeilds an accuracy of `r cm$overall[1]` , with a 95% confidence interval of (`r cm$overall[3]`, `r cm$overall[4]`) on the test set.
